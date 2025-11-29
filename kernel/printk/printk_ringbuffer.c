@@ -2057,6 +2057,46 @@ u64 prb_next_seq(struct printk_ringbuffer *rb)
 	return seq;
 }
 
+#ifdef CONFIG_MTK_PRINTK_DEBUG
+u64 prb_next_seq_id(struct printk_ringbuffer *rb, u64 old_seq)
+{
+	u64 seq = old_seq;
+
+	/* Check if the cached @id still points to a valid @seq. */
+	id = atomic_long_read(&desc_ring->last_finalized_id);
+	d_state = desc_read(desc_ring, id, NULL, &seq, NULL);
+
+	if (d_state == desc_finalized || d_state == desc_reusable) {
+		/*
+		 * Begin searching after the last finalized record.
+		 *
+		 * On 0, the search must begin at 0 because of hack#2
+		 * of the bootstrapping phase it is not known if a
+		 * record at index 0 exists.
+		 */
+		if (seq != 0)
+			seq++;
+	} else {
+		/*
+		 * The information about the last finalized sequence number
+		 * has gone. It should happen only when there is a flood of
+		 * new messages and the ringbuffer is rapidly recycled.
+		 * Give up and start from the beginning.
+		 */
+		seq = 0;
+	}
+
+	/*
+	 * The information about the last finalized @seq might be inaccurate.
+	 * Search forward to find the current one.
+	 */
+	while (_prb_read_valid(rb, &seq, NULL, NULL))
+		seq++;
+
+	return seq;
+}
+#endif
+
 /**
  * prb_init() - Initialize a ringbuffer to use provided external buffers.
  *

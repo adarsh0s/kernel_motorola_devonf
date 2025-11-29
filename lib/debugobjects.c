@@ -792,28 +792,31 @@ void debug_object_destroy(void *addr, const struct debug_obj_descr *descr)
 	if (!debug_objects_enabled)
 		return;
 
+	debug_objects_fill_pool();
+
 	db = get_bucket((unsigned long) addr);
 
 	raw_spin_lock_irqsave(&db->lock, flags);
 
-	obj = lookup_object(addr, db);
-	if (!obj) {
+	/* MMI uses lookup_object_or_alloc to prevent crashes if object is missing */
+	obj = lookup_object_or_alloc(addr, db, descr, false, true);
+	
+	if (unlikely(!obj)) {
 		raw_spin_unlock_irqrestore(&db->lock, flags);
+		debug_objects_oom();
 		return;
-	}
-
-	switch (obj->state) {
-	case ODEBUG_STATE_ACTIVE:
-	case ODEBUG_STATE_DESTROYED:
-		break;
-	case ODEBUG_STATE_NONE:
-	case ODEBUG_STATE_INIT:
-	case ODEBUG_STATE_INACTIVE:
-		obj->state = ODEBUG_STATE_DESTROYED;
-		fallthrough;
-	default:
-		raw_spin_unlock_irqrestore(&db->lock, flags);
-		return;
+	} else if (likely(!IS_ERR(obj))) {
+		switch (obj->state) {
+		case ODEBUG_STATE_ACTIVE:
+		case ODEBUG_STATE_DESTROYED:
+		case ODEBUG_STATE_NONE:
+		case ODEBUG_STATE_INIT:
+		case ODEBUG_STATE_INACTIVE:
+			obj->state = ODEBUG_STATE_DESTROYED;
+			break;
+		default:
+			break;
+		}
 	}
 
 	o = *obj;

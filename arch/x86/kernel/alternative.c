@@ -676,7 +676,6 @@ void __init_or_module noinline apply_retpolines(s32 *start, s32 *end)
 }
 
 #ifdef CONFIG_RETHUNK
-
 /*
  * Rewrite the compiler generated return thunk tail-calls.
  *

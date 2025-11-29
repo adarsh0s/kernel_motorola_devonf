@@ -6804,6 +6804,13 @@ static noinstr void vmx_vcpu_enter_exit(struct kvm_vcpu *vcpu,
 	else if (static_branch_unlikely(&mmio_stale_data_clear) &&
 		 kvm_arch_has_assigned_device(vcpu->kvm))
 		mds_clear_cpu_buffers();
+	else if (static_branch_unlikely(&mmio_stale_data_clear) &&
+		 kvm_arch_has_assigned_device(vcpu->kvm))
+		mds_clear_cpu_buffers();
+
+	vmx_disable_fb_clear(vmx);
+
+	vmx_disable_fb_clear(vmx);
 
 	vmx_disable_fb_clear(vmx);
 
